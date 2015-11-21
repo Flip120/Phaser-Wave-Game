@@ -1,6 +1,6 @@
 var game = new Phaser.Game(1000, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
-var martian, cursors, enemies, shoots, explosions;
-var lastShoot = new Date(), SHOOT_INTERVAL = 300;
+var martian, pointsText, cursors, enemies, shoots, explosions;
+var lastShoot = new Date(), SHOOT_INTERVAL = 100, enemiesKilledCount = 0, shotIdx = 0;
 
 function preload() {
 	game.load.image('martian', 'images/martian2.png');
@@ -19,6 +19,10 @@ function create() {
 	enemies = game.add.group();
 	shoots = game.add.group();
 	explosions = game.add.group();
+
+	var style = { font: "35px Arial", fill: "#ffffff", align: "center" };
+  pointsText = game.add.text(game.world.centerX, 30, "Enemies Killed: 0", style);
+  pointsText.anchor.set(0.5);
 
 	createPlayer();
 	createShoots();
@@ -62,16 +66,16 @@ function createExplosions(){
 
 function createShoots(){
 
-	for (var i = 0; i < 50; i++) {
+	for (var i = 0; i < 20; i++) {
 		var shoot = shoots.create(-1000, -1000 + martian.body.height * .5, 'shoot');
 		shoot.anchor.setTo(.5, .5);
 		shoot.alive = false;
 		game.physics.arcade.enable(shoot);
 		lastShoot = new Date();
 		shoot.disabled = true;
-		shoot.checkWorldBounds = true;
-		shoot.outOfBoundsKill = true;
 	}
+	shoots.setAll('checkWorldBounds', true); // <- extra line to make it work
+	shoots.setAll('outOfBoundsKill', true);
 }
 
 function createEnemys(){
@@ -133,17 +137,25 @@ function shoot(){
 	var playerScale = martian.scale.x;
 	var shootGap = (playerScale !== -1 ) ? martian.body.width : 0
 	var groupLength = shoots.lenght;
-	var shoot = shoots.getFirstDead();
+	//var shoot = shoots.getFirstDead();
+	var shoot = shoots.getChildAt(shotIdx);
 
-	if(!shoot){
-		shoot = shoots.getFirstAlive();
+	if(shotIdx < shoots.length -1){
+		shotIdx++;
+	}
+	else{
+		shotIdx = 0;
 	}
 
 	shoot.reset(martian.body.x + shootGap, martian.body.y + ( martian.body.height * .5 ));
  	shoot.scale.x = martian.scale.x;
- 	shoot.body.velocity.x = 600 * martian.scale.x;
+	shoot.body.velocity.x = 600 * martian.scale.x;
+	shoot.body.velocity.y = Math.random() * 100 - 100;
 	lastShoot = new Date();
 	shoot.body.checkCollision.left = shoot.body.checkCollision.right = true;
+	shoot.checkWorldBounds = true;
+	shoot.outOfBoundsKill = true;
+	shoot.lifespan=1000;
 }
 
 function checkCollision(){
@@ -156,6 +168,8 @@ function checkCollision(){
 		shoot.kill();
 		shoot.alive = true;
 		screenShake();
+		enemiesKilledCount ++;
+		pointsText.text = "Enemies Killed: " + enemiesKilledCount;
 		addExplosion(enemy.body.x + enemy.body.width * .5, enemy.body.y + enemy.body.height * .5);
 	}, null, this);
 }
@@ -185,6 +199,7 @@ function addExplosion(x, y){
 	if(explosion){
 		explosion.animations.play('explode', 20, false);
 		explosion.reset(x, y);
+		explosion.scale.x = explosion.scale.y = Math.random() * 2 + 1;
 		// game.paused = true
 		// setTimeout(function(){
 		// 		game.paused = false;
