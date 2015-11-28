@@ -1,11 +1,11 @@
 var game = new Phaser.Game(1000, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
 var martian, cursors, enemies, shoots, explosions;
-var lastShoot = new Date(), SHOOT_INTERVAL = 300;
+var lastShoot = new Date(), SHOOT_INTERVAL = 100;
 
 function preload() {
-	game.load.image('martian', 'images/martian2.png');
+	game.load.spritesheet('player', 'images/player.png', 20, 32, 7);
 	game.load.image('enemy', 'images/dummy_enemy.png');
-	game.load.image('shoot', 'images/fire_shoot.png');
+	game.load.image('shoot', 'images/bullet.png');
 	game.load.spritesheet('explosion', 'images/explosion.png', 32, 32, 4);
 	game.load.image('background', 'images/background.jpg');
 }
@@ -22,7 +22,7 @@ function create() {
 
 	createPlayer();
 	createShoots();
-  createEnemys();
+	//createEnemys();
 	createExplosions();
 
 	setInterval(spawnEnemy, 500);
@@ -37,13 +37,18 @@ function update() {
 function createPlayer(){
 	cursors = game.input.keyboard.createCursorKeys()
 
-	martian = game.add.sprite(500, 450, 'martian');
+	martian = game.add.sprite(500, 450, 'player');
 	game.physics.arcade.enable(martian);
+	martian.scale.x = martian.scale.y = 5;
+
+	martian.animations.add('stand', [0]);
+	martian.animations.add('walk', [1, 2, 3, 4, 5])
+	martian.animations.add('fire', [6]);
 
 	martian.body.bounce.y = 0.2;
  	martian.anchor.setTo(.5, .5);
-  martian.body.gravity.y = 300;
-  martian.body.collideWorldBounds = true;
+  	martian.body.gravity.y = 300;
+  	martian.body.collideWorldBounds = true;
 }
 
 function createExplosions(){
@@ -100,22 +105,30 @@ function checkKeyPress(){
     {
         //  Move to the left
         martian.body.velocity.x = -150;
-        martian.scale.x = -1
+        martian.scale.x = -5;
+        martian.animations.play('walk', 5, true)
     }
     else if (cursors.right.isDown)
     {
         //  Move to the right
         martian.body.velocity.x = 150;
-        martian.scale.x = 1
+        martian.scale.x = 5;
+        martian.animations.play('walk', 5, true)
+    }
+    else if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)){
+    	if(new Date() - lastShoot > SHOOT_INTERVAL){
+    		shoot();
+    		martian.animations.play('fire', 0, true)
+    	}
+    }
+    else{
+		martian.animations.play('stand', 5, true)
     }
 
-    if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)&& (new Date() - lastShoot > SHOOT_INTERVAL)){
-    	shoot();
-    }
 
-		if (cursors.up.isDown && martian.body.y == 406){
-				martian.body.velocity.y = -200;
-    }
+	if (cursors.up.isDown && martian.body.y == 406){
+		martian.body.velocity.y = -200;
+	}
 }
 
 function doenemiesFollowPlayer(){
@@ -139,9 +152,10 @@ function shoot(){
 		shoot = shoots.getFirstAlive();
 	}
 
-	shoot.reset(martian.body.x + shootGap, martian.body.y + ( martian.body.height * .5 ));
- 	shoot.scale.x = martian.scale.x;
+	shoot.reset(martian.body.x, shootGap, martian.body.y + ( martian.body.height * .2 ));
+ 	shoot.scale.x = (martian.scale.x > 0)? 1 : -1;
  	shoot.body.velocity.x = 600 * martian.scale.x;
+ 	shoot.body.velocity.y = (Math.random() * 100) - 50;
 	lastShoot = new Date();
 	shoot.body.checkCollision.left = shoot.body.checkCollision.right = true;
 }
